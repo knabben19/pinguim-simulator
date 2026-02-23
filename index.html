@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐧 Penguin Pet Ultra</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body{
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    transition:0.5s;
+    background:linear-gradient(to top,#74ebd5,#9face6);
+}
+
+body.night{
+    background:linear-gradient(to top,#0f2027,#203a43,#2c5364);
+}
+
+.game{
+    width:420px;
+    height:720px;
+    background:white;
+    border-radius:25px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.4);
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    align-items:center;
+    position:relative;
+    overflow:hidden;
+}
+
+h1{ font-size:20px; }
+
+.status{ width:100%; }
+
+.bar{
+    height:18px;
+    background:#ddd;
+    border-radius:10px;
+    margin:8px 0;
+    overflow:hidden;
+}
+
+.fill{
+    height:100%;
+    width:100%;
+    transition:0.3s;
+}
+
+.hunger{ background:#ff7675; }
+.energy{ background:#55efc4; }
+.xp{ background:#6c5ce7; }
+
+.penguin{
+    width:160px;
+    height:210px;
+    border-radius:90px 90px 70px 70px;
+    position:relative;
+    animation:float 2s infinite ease-in-out;
+    cursor:pointer;
+    transition:0.3s;
+}
+
+@keyframes float{
+    0%{ transform:translateY(0); }
+    50%{ transform:translateY(-12px); }
+    100%{ transform:translateY(0); }
+}
+
+.belly{
+    width:110px;
+    height:150px;
+    background:white;
+    border-radius:50%;
+    position:absolute;
+    top:40px;
+    left:25px;
+}
+
+.eye{
+    width:20px;
+    height:20px;
+    background:white;
+    border-radius:50%;
+    position:absolute;
+    top:40px;
+}
+
+.eye::after{
+    content:'';
+    width:10px;
+    height:10px;
+    background:black;
+    border-radius:50%;
+    position:absolute;
+    top:5px;
+    left:5px;
+}
+
+.left{ left:35px; }
+.right{ right:35px; }
+
+.beak{
+    width:20px;
+    height:20px;
+    background:orange;
+    position:absolute;
+    top:70px;
+    left:70px;
+    transform:rotate(45deg);
+}
+
+.controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+}
+
+button{
+    padding:8px 12px;
+    border:none;
+    border-radius:10px;
+    background:#0984e3;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+button:hover{
+    transform:scale(1.1);
+}
+
+.shop{
+    position:absolute;
+    bottom:0;
+    left:0;
+    width:100%;
+    background:#f1f1f1;
+    padding:15px;
+    transform:translateY(100%);
+    transition:0.4s;
+}
+
+.shop.active{
+    transform:translateY(0);
+}
+
+.scene-btn{
+    background:#00b894;
+}
+
+.level{
+    font-weight:bold;
+}
+</style>
+</head>
+<body>
+<button onclick="startClickGame()">⚡ Clique Game</button>
+<button onclick="startDodgeGame()">🎯 Dodge Game</button>
+
+<div id="minigame" style="
+position:absolute;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:white;
+display:none;
+justify-content:center;
+align-items:center;
+flex-direction:column;
+z-index:999;
+">
+</div>
+<div class="game">
+
+<h1>🐧 Penguin Ultra</h1>
+
+<div class="status">
+Fome
+<div class="bar"><div class="fill hunger" id="hungerBar"></div></div>
+Energia
+<div class="bar"><div class="fill energy" id="energyBar"></div></div>
+XP
+<div class="bar"><div class="fill xp" id="xpBar"></div></div>
+</div>
+
+<div id="penguin" class="penguin">
+<div class="belly"></div>
+<div class="eye left"></div>
+<div class="eye right"></div>
+<div class="beak"></div>
+</div>
+
+<div class="level">
+Nível: <span id="level">1</span> | 💰 <span id="coins">100</span>
+</div>
+
+<div class="controls">
+<button onclick="feed()">🍔</button>
+<button onclick="play()">🎮</button>
+<button onclick="sleep()">😴</button>
+<button onclick="toggleShop()">🛒 Loja</button>
+<button class="scene-btn" onclick="changeScene()">🏠 Cenário</button>
+</div>
+
+<div class="shop" id="shop">
+<h3>🛒 Loja</h3>
+
+<button onclick="buySkin('black',0)">Skin Normal</button>
+<button onclick="buySkin('blue',50)">Skin Azul (50)</button>
+<button onclick="buySkin('pink',80)">Skin Rosa (80)</button>
+<button onclick="buyHat(40)">🎩 Chapéu (40)</button>
+
+<br><br>
+<button onclick="toggleShop()" style="background:#d63031;">❌ Sair</button>
+</div>
+
+</div>
+
+<audio id="clickSound" src="https://www.soundjay.com/buttons/sounds/button-16.mp3"></audio>
+<audio id="levelUpSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
+
+<script>
+let hunger=100, energy=100, xp=0, level=1, coins=100;
+let currentSkin="black";
+let hat=false;
+
+const hungerBar=document.getElementById("hungerBar");
+const energyBar=document.getElementById("energyBar");
+const xpBar=document.getElementById("xpBar");
+const levelText=document.getElementById("level");
+const coinsText=document.getElementById("coins");
+const penguin=document.getElementById("penguin");
+const shop=document.getElementById("shop");
+const clickSound=document.getElementById("clickSound");
+const levelUpSound=document.getElementById("levelUpSound");
+
+function save(){
+localStorage.setItem("penguinSave",JSON.stringify({hunger,energy,xp,level,coins,currentSkin,hat}));
+}
+
+function load(){
+let saveData=JSON.parse(localStorage.getItem("penguinSave"));
+if(saveData){
+hunger=saveData.hunger;
+energy=saveData.energy;
+xp=saveData.xp;
+level=saveData.level;
+coins=saveData.coins;
+currentSkin=saveData.currentSkin;
+hat=saveData.hat;
+}
+}
+
+function update(){
+hungerBar.style.width=hunger+"%";
+energyBar.style.width=energy+"%";
+xpBar.style.width=xp+"%";
+levelText.innerText=level;
+coinsText.innerText=coins;
+penguin.style.background=currentSkin;
+save();
+}
+
+function addXP(amount){
+xp+=amount;
+if(xp>=100){
+xp=0;
+level++;
+levelUpSound.play();
+}
+}
+
+function feed(){
+if(coins>=10){
+clickSound.play();
+hunger=Math.min(100,hunger+20);
+coins-=10;
+addXP(10);
+update();
+}
+}
+
+function play(){
+if(energy>=10){
+clickSound.play();
+hunger-=10;
+energy-=15;
+coins+=20;
+addXP(20);
+update();
+}
+}
+
+function sleep(){
+clickSound.play();
+energy=Math.min(100,energy+30);
+update();
+}
+
+function toggleShop(){
+shop.classList.toggle("active");
+}
+
+function buySkin(color,price){
+if(coins>=price){
+coins-=price;
+currentSkin=color;
+update();
+}
+}
+
+function buyHat(price){
+if(coins>=price){
+coins-=price;
+hat=true;
+penguin.innerHTML+=`<div style="position:absolute;top:-20px;left:45px;font-size:40px;">🎩</div>`;
+update();
+}
+}
+
+function changeScene(){
+document.body.classList.toggle("night");
+}
+
+setInterval(()=>{
+hunger=Math.max(0,hunger-1);
+energy=Math.max(0,energy-1);
+update();
+},3000);
+
+function autoNight(){
+let hour=new Date().getHours();
+if(hour>=18 || hour<=6){
+document.body.classList.add("night");
+}
+}
+autoNight();
+
+load();
+update();
+const minigame = document.getElementById("minigame");
+
+function evolvePenguin(){
+    if(level >= 7){
+        penguin.style.transform = "scale(1.6)";
+        penguin.style.boxShadow = "0 0 40px gold";
+    }
+    else if(level >= 5){
+        penguin.style.transform = "scale(1.4)";
+    }
+    else if(level >= 3){
+        penguin.style.transform = "scale(1.2)";
+    }
+    else{
+        penguin.style.transform = "scale(1)";
+    }
+}
+
+function addXP(amount){
+    xp+=amount;
+    if(xp>=100){
+        xp=0;
+        level++;
+        levelUpSound.play();
+        evolvePenguin();
+    }
+}
+
+function startClickGame(){
+    minigame.style.display="flex";
+    let score=0;
+    let time=10;
+
+    minigame.innerHTML=`
+        <h2>⚡ Clique Rápido</h2>
+        <div id="target" style="
+            width:80px;
+            height:80px;
+            background:red;
+            border-radius:50%;
+            position:absolute;
+            cursor:pointer;
+        "></div>
+        <p>Tempo: <span id="time">${time}</span></p>
+        <p>Pontos: <span id="score">0</span></p>
+    `;
+
+    const target=document.getElementById("target");
+    const timeText=document.getElementById("time");
+    const scoreText=document.getElementById("score");
+
+    function moveTarget(){
+        target.style.top=Math.random()*80+"%";
+        target.style.left=Math.random()*80+"%";
+    }
+
+    moveTarget();
+
+    target.onclick=()=>{
+        score++;
+        scoreText.innerText=score;
+        moveTarget();
+    };
+
+    let interval=setInterval(()=>{
+        time--;
+        timeText.innerText=time;
+        if(time<=0){
+            clearInterval(interval);
+            endMiniGame(score*5,score*3);
+        }
+    },1000);
+}
+
+function startDodgeGame(){
+    minigame.style.display="flex";
+    let time=15;
+
+    minigame.innerHTML=`
+        <h2>🎯 Desvie!</h2>
+        <div id="player" style="
+            width:50px;
+            height:50px;
+            background:black;
+            position:absolute;
+            bottom:20px;
+        "></div>
+        <div id="obstacle" style="
+            width:50px;
+            height:50px;
+            background:red;
+            position:absolute;
+            top:0;
+        "></div>
+        <p>Tempo: <span id="time">${time}</span></p>
+    `;
+
+    const player=document.getElementById("player");
+    const obstacle=document.getElementById("obstacle");
+    const timeText=document.getElementById("time");
+
+    let pos=150;
+    player.style.left=pos+"px";
+
+    document.onkeydown=(e)=>{
+        if(e.key==="ArrowLeft") pos-=20;
+        if(e.key==="ArrowRight") pos+=20;
+        player.style.left=pos+"px";
+    };
+
+    let obstaclePos=0;
+
+    let gameLoop=setInterval(()=>{
+        obstaclePos+=5;
+        obstacle.style.top=obstaclePos+"px";
+
+        if(obstaclePos>500){
+            obstaclePos=0;
+            obstacle.style.left=Math.random()*300+"px";
+        }
+
+        if(
+            obstaclePos>400 &&
+            Math.abs(parseInt(obstacle.style.left)-pos)<50
+        ){
+            clearInterval(gameLoop);
+            endMiniGame(10,10);
+        }
+    },20);
+
+    let timer=setInterval(()=>{
+        time--;
+        timeText.innerText=time;
+        if(time<=0){
+            clearInterval(gameLoop);
+            clearInterval(timer);
+            endMiniGame(50,40);
+        }
+    },1000);
+}
+
+function endMiniGame(coinReward,xpReward){
+    coins+=coinReward;
+    addXP(xpReward);
+    minigame.innerHTML=`
+        <h2>🎉 Fim do jogo!</h2>
+        <p>+${coinReward} moedas</p>
+        <p>+${xpReward} XP</p>
+        <button onclick="closeMiniGame()">Voltar</button>
+    `;
+}
+
+function closeMiniGame(){
+    minigame.style.display="none";
+    document.onkeydown=null;
+    update();
+}
+</script>
+
+</body>
+</html>
